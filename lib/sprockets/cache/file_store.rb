@@ -1,6 +1,7 @@
 require 'digest/md5'
 require 'fileutils'
 require 'pathname'
+require 'thread'
 
 module Sprockets
   module Cache
@@ -12,6 +13,7 @@ module Sprockets
       DEFAULT_MAX_SIZE = 1000
 
       def initialize(root, max_size = DEFAULT_MAX_SIZE)
+        @mutex = Mutex.new
         @root = root
         @size = find_caches.size
         @max_size = max_size
@@ -41,7 +43,9 @@ module Sprockets
         exists = File.exist?(path)
 
         # Write data
-        File.open(path, 'w') { |f| Marshal.dump(value, f) }
+        @mutex.synchronize do
+          File.open(path, 'w') { |f| Marshal.dump(value, f) }
+        end
 
         # GC if necessary
         @size += 1 unless exists
